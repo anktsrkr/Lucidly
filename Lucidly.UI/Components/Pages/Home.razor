@@ -1,0 +1,728 @@
+﻿@page "/"
+@using Lucidly.Common.Models
+@using Lucidly.UI.Utils
+@using Markdig
+@using Microsoft.AspNetCore.SignalR.Client
+@using ModelContextProtocol.Client
+@using System.Text.Json
+@using System.ComponentModel.DataAnnotations
+@inject NavigationManager Navigation
+@inject ModalService ModalService;
+@using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
+@inject ProtectedLocalStorage ProtectedLocalStorage
+
+@inject IJSRuntime JS
+@implements IDisposable
+ <GridRow>
+        <GridCol Span="22" Offset="1" >
+               <div class="chat-container">
+    	<Flex  Align="FlexAlign.FlexStart" Direction="FlexDirection.Vertical" Class="ant-chat-content-list">
+		 <AntList DataSource="@datas" TItem="Data"  Class="comment-list">
+			<ListItem>
+				<Comment Actions="@context.Actions" Avatar="@context.Avatar" Author="@context.Author" DatetimeTemplate="@context.Datetime"
+				ContentTemplate="@context.Content">
+				</Comment>
+			 </ListItem>
+		 </AntList>
+	
+		   
+		</Flex>
+  </div>
+  <div class="chat-input">
+    <Flex Gap="FlexGap.Middle"   Direction="FlexDirection.Vertical"
+		  Style="width: 100%; max-width: 90vw; border-radius:6px; border:1px solid #40a9ff; padding: 16px;">
+		<Flex Justify="FlexJustify.Right" Align="FlexAlign.Start" Style="width: 100%;" >
+		  <Mentions  Value="@recognizedText" Class="ant-mentions-ovveride" ValueChanged="OnValueChanged"  Loading="true" LoadOptions="@LoadMentions" >
+				<TextareaTemplate Context="context">
+					<TextArea RefBack=@context.RefBack
+							  OnInput=@context.OnInput
+							  BindOnInput=false
+							  OnkeyDown=context.OnKeyDown
+							  Value=@context.Value
+							  AutoFocus="true" 
+							  Placeholder="please enter @@"
+							  MinRows="2" 
+							  MaxRows="2"
+							  Bordered="false"/>
+				</TextareaTemplate>
+			</Mentions>
+
+		  </Flex>
+		<Flex Style="width: 100%;" Gap="FlexGap.Middle" Justify="FlexJustify.SpaceBetween" Direction="FlexDirection.Horizontal">
+
+		<Flex Justify="FlexJustify.FlexEnd" Align="FlexAlign.FlexEnd">
+			<Segmented Block TValue="ChatModeEnum" OnChange="OnChatModeChange">
+				  <SegmentedItem Value=@(ChatModeEnum.Solo)>
+						<Tooltip Placement="Placement.TopRight" Title="Solo Mode">
+							<Button Type="ButtonType.Text"  Size="ButtonSize.Small" Shape="ButtonShape.Round" Icon="@IconType.Outline.Comment" />
+						</Tooltip>
+				  </SegmentedItem>
+				  <SegmentedItem Value=@(ChatModeEnum.Collaborative)>
+						<Tooltip Placement="Placement.TopLeft" Title="Collaboration Mode">
+							<Button Type="ButtonType.Text"  Size="ButtonSize.Small" Shape="ButtonShape.Round" Icon="@IconType.Outline.Partition" />   
+						</Tooltip>
+				  </SegmentedItem>
+			</Segmented>
+
+		</Flex>
+			<Flex Justify="FlexJustify.Start" Align="FlexAlign.Start" Gap="FlexGap.Small" Direction="FlexDirection.Horizontal">
+				<Dropdown Trigger="@(new Trigger[] { Trigger.Click })">
+					<Overlay>
+						<Menu>
+							<MenuItem >
+								Existing Tools
+							</MenuItem>
+							<MenuItem OnClick="OnAddNewMcpToolClick">
+								Add new MCP server
+							</MenuItem>
+						</Menu>
+					</Overlay>
+					<ChildContent>
+					<Badge Size="BadgeSize.Small" Count="5">
+						<Button Type="ButtonType.Default" Shape="ButtonShape.Round" Icon="@IconType.Outline.Tool" />
+					</Badge>	
+					</ChildContent>
+				</Dropdown>
+
+						@if (_agentsVisible)
+						{
+							<Dropdown>
+								<Overlay>
+									<Menu>
+										<MenuItem>
+											<a target="_blank" rel="noopener noreferrer" href="http://www.alipay.com/">
+												1st menu item
+											</a>
+										</MenuItem>
+										<MenuItem>
+											<a target="_blank" rel="noopener noreferrer" href="http://www.taobao.com/">
+												2nd menu item
+											</a>
+										</MenuItem>
+										<MenuItem>
+											<a target="_blank" rel="noopener noreferrer" href="http://www.tmall.com/">
+												3rd menu item
+											</a>
+										</MenuItem>
+									</Menu>
+								</Overlay>
+								<ChildContent>
+								<Badge Size="BadgeSize.Small" Count="5">
+									<Button Type="ButtonType.Default" Shape="ButtonShape.Round" Icon="@IconType.Outline.Robot"   OnClick="()=>_visible=true"/>
+								</Badge>	
+								</ChildContent>
+							</Dropdown>		
+						}
+						@if (isListening)
+						{
+							<Button Type="ButtonType.Primary" Shape="ButtonShape.Round" Icon="@IconType.Outline.AudioMuted" @onclick="StopSpeechRecognition" />
+						}
+						else
+						{
+							<Button Type="ButtonType.Default" Shape="ButtonShape.Round" Icon="@IconType.Outline.Audio" @onclick="StartSpeechRecognition" />
+							
+						}
+						@if (isStreaming)
+						{	<Button Type="ButtonType.Primary" Shape="ButtonShape.Circle"
+							Icon="@IconType.Outline.Loading"  @onclick="onCancel" />
+
+						}
+						else
+						{
+							<Button Type="ButtonType.Primary" Shape="ButtonShape.Circle"
+							Disabled=@(string.IsNullOrEmpty(recognizedText))
+							Icon="@IconType.Outline.Send" @onclick="onSubmit" />
+						}
+			</Flex>
+		</Flex>
+</Flex>
+ 
+  </div>
+        </GridCol>
+    </GridRow>
+ 
+<Modal Title="@("Title")" @bind-Visible="@_visible" >
+    <Header>
+        <Icon Type="@IconType.Outline.Edit" /> Edit
+    </Header>
+    <ChildContent>
+<Tabs Centered>
+	<TabPane Tab="Existing MCP Servers" Key="1">
+		<Collapse DefaultActiveKey="@(new[]{"1"})" OnChange="Callback" Animation>
+    <Panel Header="This is panel header 1" Key="1">
+        <p>@text</p>
+    </Panel>
+    <Panel Key="2">
+        <HeaderTemplate>
+            This is panel header 2
+        </HeaderTemplate>
+        <ChildContent>
+            <p>@text</p>
+        </ChildContent>
+    </Panel>
+    <Panel Header="This is panel header 3" Key="3" >
+        <p>@text</p>
+    </Panel>
+	<Panel Header="This is panel header 1" Key="1">
+        <p>@text</p>
+    </Panel>
+    <Panel Key="2">
+        <HeaderTemplate>
+            This is panel header 2
+        </HeaderTemplate>
+        <ChildContent>
+            <p>@text</p>
+        </ChildContent>
+    </Panel>
+    <Panel Header="This is panel header 3" Key="3" >
+        <p>@text</p>
+    </Panel><Panel Header="This is panel header 1" Key="1">
+        <p>@text</p>
+    </Panel>
+    <Panel Key="2">
+        <HeaderTemplate>
+            This is panel header 2
+        </HeaderTemplate>
+        <ChildContent>
+            <p>@text</p>
+        </ChildContent>
+    </Panel>
+    <Panel Header="This is panel header 3" Key="3" >
+        <p>@text</p>
+    </Panel><Panel Header="This is panel header 1" Key="1">
+        <p>@text</p>
+    </Panel>
+    <Panel Key="2">
+        <HeaderTemplate>
+            This is panel header 2
+        </HeaderTemplate>
+        <ChildContent>
+            <p>@text</p>
+        </ChildContent>
+    </Panel>
+    <Panel Header="This is panel header 3" Key="3" >
+        <p>@text</p>
+    </Panel>
+</Collapse>
+	</TabPane>
+	<TabPane Tab="Add MCP Server" Key="2">
+		Content of Tab Pane 2
+	</TabPane>
+	
+</Tabs>
+    </ChildContent>
+</Modal>
+
+ 
+	<style>html, body {
+  scroll-behavior: smooth; /* or remove entirely */
+}
+    .chat-container {
+      flex: 1;
+      padding: 16px;
+	  min-height:75vh
+    }
+
+    .message {
+      margin-bottom: 12px;
+      padding: 10px;
+      border-radius: 8px;
+      max-width: 70%;
+    }
+
+    /* Fixed input area */
+    .chat-input {
+      position: sticky;
+      bottom: 0px;
+      background: #fff;
+      z-index: 1;
+	  padding: 12px;
+    }
+
+    .chat-input input {
+      width: 100%;
+      padding: 10px;
+      border-radius: 20px;
+      border: 1px solid #ccc;
+      outline: none;
+    }.ant-mentions-ovveride{
+			display:contents;
+		} 
+		/* 
+			.ant-chat-content-list {min-height:69vh;overflow-y:hidden;  margin-right: 16px;
+    }.ant-chat-content-list:hover {
+        margin-right: 0;
+overflow-y:auto;
+    } */
+	</style>
+@code {
+
+	public async Task<IEnumerable<MentionsDynamicOption>> LoadMentions(string search, CancellationToken cancellationToken)
+    {
+        await Task.Delay(TimeSpan.FromSeconds(1));
+
+        if (cancellationToken.IsCancellationRequested)
+        {
+            return Enumerable.Empty<MentionsDynamicOption>();
+        }
+
+          var result = await ProtectedLocalStorage.GetAsync<Model>("model");
+			var tools =   result.Success ? result.Value.Tools : default;
+		if (!string.IsNullOrEmpty(search))
+		{
+			return tools.Where(x=>x.Name.Contains(search)).Select(x => new MentionsDynamicOption
+        {
+            Value = x.Name,
+            Display = OptionDisplay(x)
+        });
+		}
+        return tools.Select(x => new MentionsDynamicOption
+        {
+            Value = x.Name,
+            Display = OptionDisplay(x)
+        });
+    }
+	    private RenderFragment<McpTool> OptionDisplay => (tool) =>@<div style="width:auto;max-width:65vw">
+																		<Text Strong Style="text-wrap: wrap;" >@tool.Name</Text>
+																		<div>
+																		<Text Type="TextElementType.Secondary" Style="text-wrap: wrap;">@tool.Description</Text>
+																		</div>
+																	</div>;
+
+    bool _visible = false;
+    ChatModeEnum _mode = ChatModeEnum.Solo;
+	bool _agentsVisible = false;
+	bool _addNewMCPServerModalVisible = false;
+	 IEnumerable<McpTool> selectedRows;
+
+
+	RenderFragment FormTemplate()
+    {
+	return 
+        @<Form
+			Layout="@FormLayout.Vertical" 
+				  Model="@model"
+				  LabelColSpan="24"
+				  WrapperColSpan="24"
+				  OnFinish="OnFinish"
+				  OnFinishFailed="OnFinishFailed"
+				  @ref="@_form">
+           <FormItem Label="Server Type" >
+				<RadioGroup @bind-Value="@context.ServerMode" ButtonStyle="RadioButtonStyle.Solid">
+					<Radio RadioButton Value="MCPServerMode.HTTP">HTTP</Radio>
+					<Radio RadioButton Value="MCPServerMode.STDIO">STDIO</Radio>
+				</RadioGroup>
+			</FormItem>
+			@if (context.ServerMode == MCPServerMode.HTTP)
+			{
+				<FormItem Label="Server Url">
+ 
+					<Search 
+					Type="InputType.Url"  
+					Placeholder="input search text"  
+					 EnterButton="true" @bind-Value="@context.Url" OnSearch="OnSearch" >
+					<AddOnBefore><Icon OnClick="addRow" Type="@IconType.Outline.Setting" /></AddOnBefore>
+
+</Search>
+
+				</FormItem>
+				
+					@if (context.Headers.Count>0)
+			{
+					<FormItem Label="Additional Headers" Name="@nameof(context.Headers)" Rules="[new(){ Min=1 }]">
+
+						<Table DataSource="context.Headers" TItem="ServerHeader" Context="row" Size="TableSize.Small" HidePagination Bordered>
+						<PropertyColumn Width="30%" Property="c=>c.Key">
+							<FormItem Required>
+								<Input @bind-Value="@row.Key" />
+							</FormItem>
+						</PropertyColumn>
+						<PropertyColumn Property="c=>c.Value">
+							<FormItem Required>
+								<InputPassword  @bind-Value="@row.Value" />
+							</FormItem>
+						</PropertyColumn>
+						</Table>
+					 </FormItem>		
+					}
+			
+
+
+				 @if (context.Tools.Count>0)
+					{
+						<div style="margin-bottom:10px">Available Tools</div>
+						<Table DataSource="@context.Tools" Total="@context.Tools.Count"
+						TItem="McpTool" @bind-SelectedRows="selectedRows" RowKey="x=>x.Name"
+						OnSelectAll="OnSelectAll" 
+							Context="rowx" Size="TableSize.Small"
+								HidePagination Bordered>
+										<Selection/>
+									    <PropertyColumn Property="c=>c.Name" />
+										<PropertyColumn Property="c=>c.Description" />
+								</Table>
+					}
+			}else{
+				  <FormItem Label="Argument">
+                <InputPassword @bind-Value="@context.Url" />
+            </FormItem>
+			}
+          
+        </Form>
+		;
+	}
+	  public void RemoveSelection(string key)
+    {
+        this.selectedRows = selectedRows.Where(x => x.Name != key).ToList();
+    }
+
+    void OnSelectAll(bool selectAll)
+    {
+        Console.WriteLine($"select all row? {selectAll}");
+    }
+	public async Task OnSearch()
+	{
+		await using var mcpClient = await McpClientFactory.CreateAsync( new SseClientTransport(new SseClientTransportOptions
+		{
+			Endpoint = new(model.Url),
+			TransportMode = HttpTransportMode.AutoDetect,
+			AdditionalHeaders = model.Headers.ToDictionary(x => x.Key, x => x.Value)
+		}));
+		var availableTools = await mcpClient.ListToolsAsync();
+		model.Tools =availableTools.Select(x => new McpTool(x.Name,x.Description)).ToList();
+	 	await modalRef?.UpdateConfigAsync();
+
+	}
+	bool _submitting = false;
+	private Form<Model> _form;
+	ModalRef modalRef = default;
+
+	private Model model = new Model();
+	public class ServerHeader
+	{
+		public string Key { get; set; }
+		public string Value { get; set; }
+	}
+	public class Model
+	{
+		[Required]
+		public MCPServerMode ServerMode { get; set; } = MCPServerMode.HTTP;
+
+      	[Required]
+		public string Url { get; set; }
+		       
+		public List<ServerHeader> Headers { get; set; } = [];
+		public List<McpTool> Tools { get; set; } = [];
+
+    }
+	async Task addRow()
+    {
+        model.Headers.Add(new());
+		await modalRef?.UpdateConfigAsync();
+
+    }
+    private void ShowModal()
+    {
+        _visible = true;
+    }
+
+    /// <summary>
+    /// on modal OK button is click, submit form manually
+    /// </summary>
+    /// <param name="e"></param>
+    private async Task HandleOk(MouseEventArgs e)
+    {
+        _submitting = true;
+     //   await Task.Delay(1000);
+        _form.Submit();
+    }
+
+    private void HandleCancel(MouseEventArgs e)
+    {
+        Console.WriteLine(e);
+    }
+
+    /// <summary>
+    /// when form is submited, close the modal
+    /// </summary>
+    /// <param name="args"></param>
+    private async Task OnFinish(EditContext editContext)
+    {
+		model.Tools = selectedRows.ToList();
+		    await ProtectedLocalStorage.SetAsync("model", model);
+
+		Console.WriteLine($"Success:{JsonSerializer.Serialize(model)}");
+        _submitting = false;
+        _visible = false;
+    }
+
+    private void OnFinishFailed(EditContext editContext)
+    {
+        Console.WriteLine($"Failed:{JsonSerializer.Serialize(model)}");
+    }
+	
+    string text = @"
+A dog is a type of domesticated animal.
+Known for its loyalty and faithfulness,
+it can be found as a welcome guest in many households across the world.
+";
+
+    void Callback(string[] keys)
+    {
+        Console.WriteLine(string.Join(',', keys));
+    }
+
+
+    List<Data> datas=new List<Data>();
+	 		
+	RenderFragment replyAction =@<span>Reply to</span>;
+
+	CancellationTokenSource cancellationTokenSource;	
+	async Task onCancel()
+	{
+		  await hubConnection.SendAsync("OnCancel");
+    
+		cancellationTokenSource?.Cancel();
+	}
+ 
+	public  class Data
+    {
+        public string BubbleId { get; set; }
+        public string Author { get; set; }
+        public string Avatar { get; set; }
+        public RenderFragment Content { get; set; }
+        public string ContentAsStr { get; set; }
+        public List<RenderFragment> Actions;
+        public RenderFragment Datetime;
+    }
+	async Task onSubmit()
+    {				
+		isStreaming = true;
+
+		cancellationTokenSource = new CancellationTokenSource();
+		var channel = await hubConnection.StreamAsChannelAsync<ChatBubble>("StreamMessage","You",recognizedText, cancellationTokenSource.Token);
+		recognizedText= "";
+	
+		// Wait asynchronously for data to become available
+		while (await channel.WaitToReadAsync())
+		{
+			// Read all currently available data synchronously, before waiting for more data
+			while (channel.TryRead(out var response))
+			{  
+			var loadingState = datas;
+			if (loadingState!= null)
+				{
+					datas.RemoveAll(x => x.Author == "...");
+				}
+			var hasMessage = datas.Find(x => x.BubbleId == response.BubbleId);
+			if (hasMessage!= null)
+			{
+				hasMessage.Content =@<MarkdownComponent MarkdownContent="@(response.Message)"/>;
+				hasMessage.ContentAsStr = response.Message;
+			}
+			else
+			{
+					this.datas.Add(new Data()
+					{
+						BubbleId=response.BubbleId,
+						Author = response.User,
+						Avatar = @"https://zos.alipayobjects.com/rmsportal/ODTLcjxAfvqbxHnVXCYX.png",
+						Content = @<MarkdownComponent MarkdownContent="@(response.Message)"/>,
+						ContentAsStr = response.Message,
+						Datetime =  @<Tooltip Title="@(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"))">
+										   <span>
+											   @(MomentHelper.FromNow(DateTime.Now))
+										   </span>
+										</Tooltip>,
+						Actions = new List<RenderFragment>() 
+						{
+							@<Button Type="ButtonType.Text" Shape="ButtonShape.Circle" 
+							Icon="@IconType.Outline.CustomerService" 
+							Onclick ="()=>StartSpeaking(bubbleId:response.BubbleId)" />
+						}
+					}); 
+
+					if (response.User == "You")
+					{
+						this.datas.Add(new Data()
+							{
+								Author = "...",
+								Avatar = @"https://zos.alipayobjects.com/rmsportal/ODTLcjxAfvqbxHnVXCYX.png",
+								Content = @<Skeleton Active="true" Style="width:70vw"></Skeleton>,
+								ContentAsStr = "",
+								Datetime =  @<Tooltip Title="@(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"))">
+												   <span>
+													   @(MomentHelper.FromNow(DateTime.Now))
+												   </span>
+												</Tooltip>
+		,
+								Actions = new List<RenderFragment>() 
+								{
+
+								}
+							}); 
+					}
+				}
+
+
+				await InvokeAsync(StateHasChanged);
+			}
+		}
+
+
+
+		//	await hubConnection.SendAsync("SendMessage", "You",recognizedText);
+
+	}
+	private string MarkdownText = @"
+# Hello Markdown
+
+This is a basic demo of the Markdown component.
+
+## Features
+
+- **Bold** and *italic* text
+- Lists and nested lists
+- Code blocks with syntax highlighting
+- Tables and math formulas
+
+### Code Example
+
+```csharp
+public class HelloWorld
+{
+        public static void Main()
+        {
+                Console.WriteLine(""Hello, World!"");
+        }
+}
+```
+
+### Table Example
+
+| Feature | Support |
+| ---------| ---------|
+| Markdown | ✅ |
+| Code Highlight | ✅ |
+| Components | ✅ |
+| Math | ✅ |
+
+> This is a blockquote
+
+";
+	private HubConnection? hubConnection;
+	private List<string> messages = [];
+
+	protected override async Task OnInitializedAsync()
+	{   
+		hubConnection = new HubConnectionBuilder()
+			.WithUrl(new Uri("https://localhost:7255/solo"))
+			.Build();
+		hubConnection.On("OnReceiveMessageEnd", () =>
+		{
+
+			isStreaming = false;
+			InvokeAsync(StateHasChanged);
+		});
+	
+        await hubConnection.StartAsync();
+		 
+ 	}
+	 RenderFragment header =>
+        @<div>
+            @if (datas.Any())
+            {
+                <span>
+                    @($"{datas.Count} {(datas.Count > 1 ? "replies" : "reply")}")
+                </span>
+            }
+        </div>
+			;
+
+
+	private string recognizedText = "";
+	private bool isListening = false;
+	private bool isStreaming = false;
+	private DotNetObjectReference<Home>? objRef;
+	protected override void OnInitialized()
+	{
+		objRef = DotNetObjectReference.Create(this);
+	}
+
+	private async Task StartSpeechRecognition()
+	{
+
+		await JS.InvokeVoidAsync("speechRecognizer.startRecognition", objRef);
+		isListening = true;
+	}
+	private async Task StartSpeaking(string bubbleId)
+	{			
+		var hasMessage = datas.Find(x => x.BubbleId == bubbleId);
+		await JS.InvokeVoidAsync("TextToSpeech.startRecognition", objRef,hasMessage.ContentAsStr);
+	}
+	[JSInvokable]
+	public Task OnSpeechRecognized(string text)
+	{
+		recognizedText = text;
+		StateHasChanged();
+		return Task.CompletedTask;
+	}
+	public async Task StopSpeechRecognition()
+	{
+		isListening = false;
+		await JS.InvokeVoidAsync("speechRecognizer.stopRecognition", objRef);
+	}
+	public void Dispose()
+	{
+		objRef?.Dispose();
+	}
+	private void OnValueChanged(string args)
+	{
+		recognizedText = args;
+	}
+	private void OnChatModeChange(ChatModeEnum mode)
+	{
+		_agentsVisible = mode == ChatModeEnum.Collaborative;
+	}
+	private void OnAddNewMcpToolClick(MouseEventArgs args)
+	{
+		model = new Model();
+		modalRef = ModalService.CreateModal(new()
+        {
+			MaskClosable = false,
+		   Maximizable=true,
+		   Centered=true,
+		   DefaultMaximized=true,
+			OkText= "Add",
+			Title= "Add New MCP Server",
+            Content = FormTemplate(),
+            OnOk = async e =>
+            {
+                modalRef?.SetConfirmLoading(true);
+                await Task.Delay(1000);
+                if (!_form.Validate())
+                {
+                    modalRef?.SetConfirmLoading(false);
+                    return;
+                }
+
+                _form.Submit();
+
+                await modalRef.CloseAsync();
+
+                 _form.Reset();
+            },
+            OnCancel = async e =>
+            {   
+                if (!_form.IsModified || await ModalService.ConfirmAsync(new() { Content = "Are you sure you want to discard the entries?" }))
+                {   
+                    await modalRef.CloseAsync();
+                     _form.Reset();
+                }
+            },
+        });
+	}
+	private void KeyDown(KeyboardEventArgs args)
+	{
+		 
+	}
+}

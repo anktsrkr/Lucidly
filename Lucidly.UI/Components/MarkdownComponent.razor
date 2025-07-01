@@ -1,0 +1,137 @@
+﻿@using Markdig
+@using Markdown.ColorCode
+@using Microsoft.AspNetCore.Components
+@using System.Text.RegularExpressions
+
+<div class="markdown" style="width:70vw">
+
+   @{
+        var contentList = new List<(string Type, string Value)>();
+        var toolContentList = new List<(string Type, string Value)>();
+        var openThinks = new Dictionary<int, string>();
+        var toolOpenThinks = new Dictionary<int, string>();
+        int toolThinkIndex = 0;
+        Regex regex = new Regex(@"<(think|tool_update)>([\s\S]*?)(<\/\1>|$)|([^<>]+)", RegexOptions.Singleline);
+        MatchCollection matches = regex.Matches(MarkdownContent);
+        string remainingContent = MarkdownContent;
+        int thinkIndex = 0;
+
+
+                foreach (Match match in matches)
+                {
+                    if (!string.IsNullOrWhiteSpace(match.Groups[2].Value))
+                    {
+                        if (match.Groups[1].Value == "think" && string.IsNullOrEmpty(match.Groups[3].Value)) // No closing </think>
+                        {
+                            openThinks[thinkIndex++] = match.Groups[2].Value; // Store partial content
+                        }
+                        else
+                        {
+                            contentList.Add((match.Groups[1].Value, match.Groups[2].Value));
+                        }
+                    }
+                    else if (!string.IsNullOrWhiteSpace(match.Groups[4].Value))
+                    {
+                        contentList.Add(("text", match.Groups[4].Value.Trim()));
+                    }
+                }
+
+
+                if (contentList.Count > 0)
+		        {
+			        @foreach (var content in contentList)
+			        {
+					    if (content.Type == "think")
+                        {
+                            var guid = Guid.NewGuid().ToString();
+                            <Collapse Style="margin-bottom:20px;width:100%">
+                             <ExpandIconTemplate>
+        <Icon Type="@IconType.Outline.CaretRight" Rotate="@(context ? 90 : 0)" />
+    </ExpandIconTemplate>
+    <ChildContent>
+                                <Panel Header="" Key="@guid">
+                                <HeaderTemplate>
+                                <Space>
+                                    <SpaceItem>
+                                        <Icon Type="bulb" Theme="IconThemeType.TwoTone" Width="1.5em" Height="1.5em"/>
+                                    </SpaceItem>
+                                    <SpaceItem>
+                                        <Text Strong >Thought Process</Text>
+                                    </SpaceItem>
+                                </Space>
+                                </HeaderTemplate>
+                                  <ChildContent>
+                                        <p>@((MarkupString)ConvertMarkdownToHtml(content.Value))</p>
+                                   </ChildContent>
+                                  </Panel>
+
+                        </ChildContent>
+                    </Collapse>
+                }
+				        else if (content.Type == "text")
+                        {
+                             @((MarkupString)ConvertMarkdownToHtml(content.Value))
+				        }
+			        }
+		        }
+
+                @if (openThinks.Count > 0)
+		        {
+			        @foreach (var kvp in openThinks)
+                    {
+				        var guid = Guid.NewGuid().ToString();
+                         <Collapse Style="margin-bottom:20px;width:100%" DefaultActiveKey="@(new[] { guid })">
+                         <ExpandIconTemplate>
+        <Icon Type="@IconType.Outline.CaretRight" Rotate="@(context ? 90 : 0)" />
+    </ExpandIconTemplate>
+    <ChildContent>
+                         <Panel Key="@guid">
+                             <HeaderTemplate>
+                                <Space>
+                                    <SpaceItem>
+                                        <Icon Type="bulb" Theme="IconThemeType.TwoTone" Width="1.5em" Height="1.5em"/>
+                                    </SpaceItem>
+                                    <SpaceItem>
+                                    <Text Strong>Thinking...</Text>
+                                    </SpaceItem>
+                                </Space>
+                                </HeaderTemplate>
+                                  <ChildContent>
+                                    <p>@((MarkupString)ConvertMarkdownToHtml(kvp.Value))</p>
+                                  </ChildContent>
+                            </Panel>
+
+                    </ChildContent>
+                        </Collapse>
+			        }
+		        }
+    } 
+</div>
+
+@code {
+    /// <summary>
+    /// Markdown content to render.
+    /// </summary>
+    [Parameter]
+    public string MarkdownContent { get; set; }
+
+    /// <summary>
+    /// Allows consumers to provide a custom Markdig pipeline.
+    /// By default, we enable advanced extensions (tables, footers, etc.).
+    /// </summary>
+    [Parameter]
+    public MarkdownPipeline Pipeline { get; set; } = new MarkdownPipelineBuilder()
+                                                        .UseAdvancedExtensions()
+                                                        .UseColorCode()
+                                                        .Build();
+
+    /// <summary>
+    /// Converts the supplied markdown string to HTML using Markdig.
+    /// </summary>
+    /// <param name="markdown">The markdown text to convert.</param>
+    /// <returns>HTML string.</returns>
+    private string ConvertMarkdownToHtml(string markdown)
+    {
+        return Markdig.Markdown.ToHtml(markdown, Pipeline);
+    }
+}
