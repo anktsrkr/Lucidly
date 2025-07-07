@@ -1,8 +1,9 @@
 ﻿@inherits LayoutComponentBase
 
 <Layout>
-    <Sider Style="overflow: auto;height: 100vh;position: fixed;left: 0;">
-        <div class="logo" />
+    <Sider Style="overflow: auto;height: 100vh;position: fixed;left: 0;" Collapsible CollapsedChanged="OnCollapse">
+
+		<Image Src="images/logo.svg" Alt="logo" Width="140" Preview="false"  Class="logo" />
         <Menu Theme="MenuTheme.Dark" Mode="MenuMode.Inline" DefaultSelectedKeys=@(new[] { "4" })>
             <MenuItem Key="1">
                 <Icon Type="@IconType.Outline.User" />
@@ -38,10 +39,12 @@
             </MenuItem>
         </Menu>
     </Sider>
-    <Layout Class="site-layout" Style=" margin-left: 200px">
-        <Content>
+    <Layout Class="site-layout">
+		<Content>
             <div class="site-layout-background" style="padding: 24px 24px 0px 24px ;">
-                @Body
+                <div style="margin-left:@collapsedMargin">
+                    @Body
+                </div>
             </div>
         </Content>
     </Layout>
@@ -56,12 +59,25 @@
 
 <style>
     .logo {
-        height: 32px;
-        background: rgba(255, 255, 255, 0.2);
-        margin: 16px;
+        background: #071428;
+        margin: 16px 0px 10px 16px;
     }
 
     .site-layout .site-layout-background {
         background: #fff;
     }
 </style>
+@code {
+    string collapsedMargin = "200px";
+    private void OnCollapse(bool args)
+    {
+        if (args)
+        {
+            collapsedMargin = "95px";
+        }
+        else
+        {
+            collapsedMargin = "200px";
+        }
+    }
+}

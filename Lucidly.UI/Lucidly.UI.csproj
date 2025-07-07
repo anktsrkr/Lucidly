@@ -12,12 +12,14 @@
     <PackageReference Include="Markdig" Version="0.41.3" />
     <PackageReference Include="Markdown.ColorCode" Version="3.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="9.0.6" />
+    <PackageReference Include="Microsoft.AspNetCore.WebUtilities" Version="9.0.6" />
     
-    <PackageReference Include="ModelContextProtocol" Version="0.3.0-preview.1" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Lucidly.Common.Models\Lucidly.Common.Models.csproj" />
+    <ProjectReference Include="..\Lucidly.Common.Models\Lucidly.Common.csproj" />
+    <ProjectReference Include="C:\Users\ankts\Downloads\mcp\src\ModelContextProtocol.Core\ModelContextProtocol.Core.csproj" />
+    <ProjectReference Include="C:\Users\ankts\Downloads\mcp\src\ModelContextProtocol\ModelContextProtocol.csproj" />
   </ItemGroup>
 
 </Project>

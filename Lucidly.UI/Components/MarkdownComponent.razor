@@ -45,28 +45,27 @@
                         {
                             var guid = Guid.NewGuid().ToString();
                             <Collapse Style="margin-bottom:20px;width:100%">
-                             <ExpandIconTemplate>
-        <Icon Type="@IconType.Outline.CaretRight" Rotate="@(context ? 90 : 0)" />
-    </ExpandIconTemplate>
-    <ChildContent>
-                                <Panel Header="" Key="@guid">
-                                <HeaderTemplate>
-                                <Space>
-                                    <SpaceItem>
-                                        <Icon Type="bulb" Theme="IconThemeType.TwoTone" Width="1.5em" Height="1.5em"/>
-                                    </SpaceItem>
-                                    <SpaceItem>
-                                        <Text Strong >Thought Process</Text>
-                                    </SpaceItem>
-                                </Space>
-                                </HeaderTemplate>
-                                  <ChildContent>
-                                        <p>@((MarkupString)ConvertMarkdownToHtml(content.Value))</p>
-                                   </ChildContent>
-                                  </Panel>
-
-                        </ChildContent>
-                    </Collapse>
+                                     <ExpandIconTemplate>
+                                        <Icon Type="@IconType.Outline.CaretRight" Rotate="@(context ? 90 : 0)" />
+                                    </ExpandIconTemplate>
+                                    <ChildContent>
+                                            <Panel Header="" Key="@guid">
+                                            <HeaderTemplate>
+                                            <Space>
+                                                <SpaceItem>
+                                                    <Icon Type="bulb" Theme="IconThemeType.TwoTone" Width="1.5em" Height="1.5em"/>
+                                                </SpaceItem>
+                                                <SpaceItem>
+                                                    <Text Strong >Thought Process</Text>
+                                                </SpaceItem>
+                                            </Space>
+                                            </HeaderTemplate>
+                                              <ChildContent>
+                                                    <p>@((MarkupString)ConvertMarkdownToHtml(content.Value))</p>
+                                               </ChildContent>
+                                              </Panel>
+                                    </ChildContent>
+                            </Collapse>
                 }
 				        else if (content.Type == "text")
                         {

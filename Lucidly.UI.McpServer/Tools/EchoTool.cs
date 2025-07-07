@@ -4,14 +4,17 @@ using System.ComponentModel;
 namespace Lucidly.UI.McpServer.Tools
 {
     [McpServerToolType]
-    public sealed class EchoTool
+    public class EchoTool(IHttpContextAccessor contextAccessor)
     {
-        [McpServerTool, Description("Echoes the input back to the client.")]
-        public static string Echo(string message)
+        private readonly IHttpContextAccessor _contextAccessor = contextAccessor ?? throw new ArgumentNullException(nameof(contextAccessor));
+
+
+        [McpServerTool, Description("Echoes the message back to the client.")]
+        public string Echo(string message)
         {
-            return "hello " + message;
+            return $"hello {message}, {_contextAccessor.HttpContext?.Request.Path ?? "(no HttpContext)"}";
         }
-       
+
         [McpServerTool, Description("Gets the current weather for the specified city and specified date time.")]
         public static string GetWeatherForCity(string cityName, string currentDateTimeInUtc)
         {

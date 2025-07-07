@@ -1,7 +1,15 @@
 using Lucidly.UI.Components;
+using Lucidly.UI.Utils;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddScoped<OAuthFlowService>();
+builder.Services.AddScoped<OAuthHandler>();
 
+builder.Services.AddSignalR(e =>
+{
+    e.EnableDetailedErrors = true;
+    e.MaximumReceiveMessageSize = 102400000;
+});
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
@@ -26,3 +34,5 @@ app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
 app.Run();
+
+ 

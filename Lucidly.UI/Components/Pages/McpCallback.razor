@@ -1,0 +1,26 @@
+﻿@page "/callback"
+@inject NavigationManager NavManager
+@using Lucidly.UI.Utils
+@using Microsoft.AspNetCore.WebUtilities
+@inject OAuthFlowService OAuthFlow
+@inject IJSRuntime JS
+
+@using System.Text
+@using System.Web
+@using System.Net
+@code {
+    public string Code { get; set; }
+    protected override void OnInitialized()
+    {
+        var uri = NavManager.ToAbsoluteUri(NavManager.Uri);
+        var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
+        var code = query["code"];
+        var state = query["state"];
+
+        OAuthFlow.SetCode(state,code);
+        JS.InvokeVoidAsync("window.close");
+
+        // Optionally redirect away or show a message
+        //  NavManager.NavigateTo("/");
+    }
+}
