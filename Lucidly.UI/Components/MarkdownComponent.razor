@@ -1,4 +1,5 @@
-﻿@using Markdig
+﻿@using Lucidly.Common
+@using Markdig
 @using Markdown.ColorCode
 @using Microsoft.AspNetCore.Components
 @using System.Text.RegularExpressions
@@ -7,6 +8,7 @@
 
    @{
         var contentList = new List<(string Type, string Value)>();
+        var toolUpdateTimeLine = new List<(string Type, string Value)>();
         var toolContentList = new List<(string Type, string Value)>();
         var openThinks = new Dictionary<int, string>();
         var toolOpenThinks = new Dictionary<int, string>();
@@ -41,6 +43,40 @@
 		        {
 			        @foreach (var content in contentList)
 			        {
+                        if (content.Type == "tool_update")
+                        {
+                        var toolDetail = System.Text.Json.JsonSerializer.Deserialize<ToolDetails>(content.Value);
+                        if (toolDetail.Type == "function-request")
+                        {
+                        toolUpdateTimeLine.Add(new(toolDetail.FunctionName, $"Requesting Permissing to run {toolDetail.FunctionName}"));
+                        <Timeline>
+                        @{
+                                var toolUpdateTimeLineorender = toolUpdateTimeLine.Where(x => x.Type == toolDetail.FunctionName);
+                                
+                                    }
+                            @foreach (var item in toolUpdateTimeLineorender)
+                            {
+                                <TimelineItem>@item.Value</TimelineItem>
+                            }
+                        </Timeline>
+                    }
+                        else if (toolDetail.Type == "function-approved")
+                            {
+                        toolUpdateTimeLine.Add(new(toolDetail.FunctionName, $" Permissing to run {toolDetail.FunctionName} approved"));
+
+                        }
+                        else if (toolDetail.Type == "function-rejected")
+                        {
+                        toolUpdateTimeLine.Add(new(toolDetail.FunctionName, $" Permissing to run {toolDetail.FunctionName} rejected"));
+
+                        }
+                        else
+                        {
+                        toolUpdateTimeLine.Add(new(toolDetail.FunctionName, $"Result from {toolDetail.FunctionName}"));
+
+                        }
+                            
+                        }
 					    if (content.Type == "think")
                         {
                             var guid = Guid.NewGuid().ToString();
@@ -81,26 +117,26 @@
 				        var guid = Guid.NewGuid().ToString();
                          <Collapse Style="margin-bottom:20px;width:100%" DefaultActiveKey="@(new[] { guid })">
                          <ExpandIconTemplate>
-        <Icon Type="@IconType.Outline.CaretRight" Rotate="@(context ? 90 : 0)" />
-    </ExpandIconTemplate>
-    <ChildContent>
-                         <Panel Key="@guid">
-                             <HeaderTemplate>
-                                <Space>
-                                    <SpaceItem>
-                                        <Icon Type="bulb" Theme="IconThemeType.TwoTone" Width="1.5em" Height="1.5em"/>
-                                    </SpaceItem>
-                                    <SpaceItem>
-                                    <Text Strong>Thinking...</Text>
-                                    </SpaceItem>
-                                </Space>
-                                </HeaderTemplate>
-                                  <ChildContent>
-                                    <p>@((MarkupString)ConvertMarkdownToHtml(kvp.Value))</p>
-                                  </ChildContent>
-                            </Panel>
+                            <Icon Type="@IconType.Outline.CaretRight" Rotate="@(context ? 90 : 0)" />
+                         </ExpandIconTemplate>
+                            <ChildContent>
+                                 <Panel Key="@guid">
+                                     <HeaderTemplate>
+                                        <Space>
+                                            <SpaceItem>
+                                                <Icon Type="bulb" Theme="IconThemeType.TwoTone" Width="1.5em" Height="1.5em"/>
+                                            </SpaceItem>
+                                            <SpaceItem>
+                                            <Text Strong>Thinking...</Text>
+                                            </SpaceItem>
+                                        </Space>
+                                        </HeaderTemplate>
+                                          <ChildContent>
+                                            <p>@((MarkupString)ConvertMarkdownToHtml(kvp.Value))</p>
+                                          </ChildContent>
+                                    </Panel>
 
-                    </ChildContent>
+                            </ChildContent>
                         </Collapse>
 			        }
 		        }

@@ -1,4 +1,5 @@
 ﻿using Lucidly.API.Infra;
+using Lucidly.Common;
 using Lucidly.Common.Models;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.SemanticKernel;
@@ -17,7 +18,7 @@ using System.Threading.Channels;
 
 namespace Lucidly.API.Hubs;
 
-public class SoloChatHub(Kernel kernel, McpClientManager mcpClientManager, GroupAccessor groupAccessor) : Hub
+public class SoloChatHub(Kernel kernel, McpClientManager mcpClientManager, GroupAccessor groupAccessor, FunctionApprovalStore functionApprovalStore) : Hub
 {
     //, GroupStreamManager manager, RedisGroupListener redis
     private const string JokerName = "Joker";
@@ -142,43 +143,14 @@ public class SoloChatHub(Kernel kernel, McpClientManager mcpClientManager, Group
             var bubbleId = Guid.NewGuid().ToString();
 
             agent.Kernel.Plugins.AddFromFunctions("Tools", alltools.Select(aiFunction => aiFunction.AsKernelFunction()));
-           // agent.Kernel.AutoFunctionInvocationFilters.Add(new AutoFunctionCallsFilter(writer, new ChatBubble(bubbleId, agent.Name, "")));
+         
+            agent.Kernel.FunctionInvocationFilters.Add(new FunctionCallsFilter(writer, new ChatBubble(bubbleId, agent.Name, ""), totalCompletion, functionApprovalStore));
 
             var content = new List<ChatMessageContent>
             {
                 new(AuthorRole.User, message)
-            };
-            var agentInvokeOptions = new AgentInvokeOptions()
-            {
-                OnIntermediateMessage = async (message) =>
-                {
-                    var functionCalls = FunctionCallContent.GetFunctionCalls(message).ToArray();
-
-                    if (functionCalls is { Length: > 0 })
-                    {
-                        foreach (var functionCall in functionCalls)
-                        {
-                            var toolUpdate = new
-                            {
-                                PluginName = functionCall.PluginName!,
-                                FunctionName = functionCall.FunctionName!,
-                                FunctionArgs = functionCall.Arguments?.Names.Zip(functionCall.Arguments?.Values, (key, value) => new { key, value })
-                                                                   .ToDictionary(x => x.key, x => x.value)
-                            };
-                            totalCompletion.Append(JsonSerializer.Serialize(toolUpdate));
-                            await writer.WriteAsync(new ChatBubble(bubbleId, agent.Name, totalCompletion.ToString()), cancellationToken);
-
-                        }
-                    }
-
-                    if (!string.IsNullOrEmpty(message.Content) && message.Role == AuthorRole.Tool)
-                    {
-                        totalCompletion.Append(message.Content);
-                        await writer.WriteAsync(new ChatBubble(bubbleId, agent.Name, totalCompletion.ToString()), cancellationToken);
-                    }
-                }
-            };
-            var agentStreamingResult = agent.InvokeStreamingAsync(content,options: agentInvokeOptions, cancellationToken:cancellationToken);
+            }; 
+            var agentStreamingResult = agent.InvokeStreamingAsync(content,/*options: agentInvokeOptions,*/ cancellationToken:cancellationToken);
 
             await foreach (var streamingUpdate in agentStreamingResult)
             {

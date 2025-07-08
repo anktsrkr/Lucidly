@@ -18,7 +18,7 @@
 
 @inject OAuthHandler OAuthHandler
 @inject IJSRuntime JS
-
+@inject HttpClient Http
 @implements IDisposable
  <GridRow >
         <GridCol Span="22" Offset="1" >
@@ -255,6 +255,13 @@
     }.ant-mentions-ovveride{
 			display:contents;
 		} 
+		.ant-timeline-item{
+			padding-bottom:10px
+		}
+
+		.ant-timeline-item-last > .ant-timeline-item-content{
+			min-height:0px;
+		}
 		/* 
 			.ant-chat-content-list {min-height:69vh;overflow-y:hidden;  margin-right: 16px;
     }.ant-chat-content-list:hover {
@@ -629,8 +636,8 @@ it can be found as a welcome guest in many households across the world.
 		 // var channel =  hubConnection.StreamAsync<ChatBubble>("StreamGroup","You",recognizedText,AvailableTools,cancellationTokenSource.Token);
  		recognizedText= "";
 
-  //           await foreach (var response in channel)
-  //           {
+		//           await foreach (var response in channel)
+		//           {
 		// 		var loadingState = datas;
 		// 	if (loadingState!= null)
 		// 		{
@@ -695,25 +702,42 @@ it can be found as a welcome guest in many households across the world.
 
 
 		// 		await InvokeAsync(StateHasChanged);
-  //           }
-      
+		//           }
 
-		
-	 // Wait asynchronously for data to become available
+
+
+		// Wait asynchronously for data to become available
+		var timelinedata = new List<string>();
 		while (await channel.WaitToReadAsync())
 		{
 			// Read all currently available data synchronously, before waiting for more data
 			while (channel.TryRead(out var response))
 			{  
-			var loadingState = datas;
-			if (loadingState!= null)
-				{
-					datas.RemoveAll(x => x.Author == "...");
-				}
+			
+			datas.RemoveAll(x => x.Author == "...");
+			
 			var hasMessage = datas.Find(x => x.BubbleId == response.BubbleId);
 			if (hasMessage!= null)
 			{
-				hasMessage.Content =@<MarkdownComponent MarkdownContent="@(response.Message)"/>;
+				if (response.Type == "function-request")
+					{
+
+					hasMessage.Content =@<span><MarkdownComponent MarkdownContent="@(response.Message)"/><Space>
+					<SpaceItem><Button Type="ButtonType.Primary" OnClick="()=>Approve(response.PendingFunctionCall.Id)">Approve</Button> </SpaceItem>
+					<SpaceItem><Button OnClick="()=>Reject(response.PendingFunctionCall.Id)">Reject</Button> </SpaceItem>
+					</Space>
+					</span> ;
+				}
+				else if (response.Type == "function-approved")
+					{
+					timelinedata.Add($"Permissing to run {response.PendingFunctionCall.Function} Approved by user.");
+					hasMessage.Content =@<span><MarkdownComponent MarkdownContent="@(response.Message)"/>
+					</span> ;
+				}
+				else
+				{
+					hasMessage.Content =@<MarkdownComponent MarkdownContent="@(response.Message)"/>;
+				}
 				hasMessage.ContentAsStr = response.Message;
 			}
 			else
@@ -723,7 +747,7 @@ it can be found as a welcome guest in many households across the world.
 						BubbleId=response.BubbleId,
 						Author = response.User,
 						Avatar = @"https://zos.alipayobjects.com/rmsportal/ODTLcjxAfvqbxHnVXCYX.png",
-						Content = @<MarkdownComponent MarkdownContent="@(response.Message)"/>,
+						Content =@<MarkdownComponent MarkdownContent="@(response.Message)"/>,
 						ContentAsStr = response.Message,
 						Datetime =  @<Tooltip Title="@(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"))">
 										   <span>
@@ -737,6 +761,7 @@ it can be found as a welcome guest in many households across the world.
 							Onclick ="()=>StartSpeaking(bubbleId:response.BubbleId)" />
 						}
 					}); 
+					
 
 					if (response.User == "You")
 					{
@@ -770,6 +795,16 @@ it can be found as a welcome guest in many households across the world.
 		//	await hubConnection.SendAsync("SendMessage", "You",recognizedText);
 
 	}
+
+	private async Task Approve(string functionCallId)
+    {
+                                        // Implement the logic for approving the function call here.
+        await Http.PostAsync($"https://localhost:7255/api/approvals/approve/{functionCallId}", null);
+    }private async Task Reject(string functionCallId)
+    {
+                                        // Implement the logic for approving the function call here.
+        await Http.PostAsync($"https://localhost:7255/api/approvals/reject/{functionCallId}", null);
+    }
 	private string MarkdownText = @"
 # Hello Markdown
 

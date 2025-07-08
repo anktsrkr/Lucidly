@@ -10,6 +10,7 @@ builder.Services.AddSignalR(e =>
     e.EnableDetailedErrors = true;
     e.MaximumReceiveMessageSize = 102400000;
 });
+builder.Services.AddHttpClient();
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
